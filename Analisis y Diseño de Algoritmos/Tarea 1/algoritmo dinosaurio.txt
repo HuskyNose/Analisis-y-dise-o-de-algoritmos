@@ -1,0 +1,44 @@
+algoritmo dinosaurio
+Variables
+puntaje = 0
+velocidad = valor inicial
+estado del juego = verdad
+posicion del personaje = Y
+hibox = cuadrado
+obstaculos = 0 
+escenario = 1
+
+Recursos
+Animaciones
+-Salto
+-Agachado
+-obstaculos
+-fondo
+
+Menu
+Mientras estado del juego = verdad:
+ mover escenario hacia atras
+ incrementar velocidad
+ 
+
+Keys
+salto : space, w, keyUp, Numkey 8
+agachado : s, keyDown, Numkey 2
+
+animaciones
+
+si escenario = 2:
+ generar x enemigo
+ generar x obstaculo
+
+obstaculos y enemigos = rng
+
+Detectar colisiones
+Si hitbox colisiona con enemigo u obstaculo:
+ estado del juego = false
+ si estado del juego = false:
+  Game Over
+  Actualizar puntaje
+  animacion de gameover
+  boton de reinicio
+
