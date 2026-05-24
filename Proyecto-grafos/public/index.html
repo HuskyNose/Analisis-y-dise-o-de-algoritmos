@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>GEORUTAS // GRAPH-GPS</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Inter:wght@400;700&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400..700,0..1,-50..200&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  
+  <style>
+    :root {
+      --ow-orange: #f06414;
+      --ow-blue: #00aeff;
+      --ow-white: #ffffff;
+      --ow-dark: #12161d;
+      --ow-card-bg: rgba(20, 26, 35, 0.85);
+      --ow-font-main: 'Big Shoulders Display', sans-serif;
+    }
+
+    body {
+      margin: 0;
+      background-color: var(--ow-dark);
+      color: var(--ow-white);
+      font-family: 'Inter', sans-serif;
+      overflow: hidden;
+      background-image: radial-gradient(circle at 50% 50%, #1e2530 0%, #12161d 100%);
+    }
+
+    .topbar {
+      background: linear-gradient(90deg, var(--ow-dark) 0%, rgba(240, 100, 20, 0.1) 100%);
+      border-bottom: 4px solid var(--ow-orange);
+      padding: 0.5rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .brand-block h1 {
+      font-family: var(--ow-font-main);
+      font-size: 2.5rem;
+      margin: 0;
+      font-weight: 900;
+      font-style: italic;
+      line-height: 1;
+    }
+
+    .brand-logo { filter: drop-shadow(0 0 8px var(--ow-orange)); }
+
+    .panel {
+      background: var(--ow-card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.1);
+      margin: 10px;
+      border-radius: 4px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    .primary-button {
+      background: var(--ow-orange);
+      color: white;
+      font-family: var(--ow-font-main);
+      font-size: 1.5rem;
+      border: none;
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      width: 100%;
+      clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%);
+      transition: all 0.2s ease;
+    }
+    .primary-button:hover { background: var(--ow-white); color: var(--ow-orange); transform: scale(1.05); }
+
+    #map { background: #0a0c10; border: 2px solid rgba(255,255,255,0.05); }
+    .leaflet-tile-container { filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%); }
+
+    .chip {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: white;
+      font-family: var(--ow-font-main);
+      font-size: 1.2rem;
+      padding: 4px 15px;
+      cursor: pointer;
+      flex: 1;
+    }
+    .chip.active { background: var(--ow-blue); border-color: var(--ow-blue); color: var(--ow-dark); box-shadow: 0 0 15px var(--ow-blue); }
+
+    .metric-card { border-left: 4px solid var(--ow-blue); padding-left: 10px; }
+    .metric-card strong { font-family: var(--ow-font-main); font-size: 2rem; color: var(--ow-blue); }
+
+    .toast {
+      position: fixed; bottom: 20px; right: 20px; background: var(--ow-blue); color: var(--ow-dark);
+      padding: 15px 20px; font-family: var(--ow-font-main); font-size: 1.2rem; font-weight: bold;
+      border-radius: 4px; box-shadow: 0 0 15px rgba(0, 174, 255, 0.5); z-index: 9999;
+      opacity: 0; transition: opacity 0.3s; pointer-events: none;
+    }
+    .toast.show { opacity: 1; pointer-events: auto; }
+
+    /* ========================================== */
+    /* SCROLLBAR        */
+    /* ========================================== */
+    .scrollable-panel {
+      overflow-y: auto;
+      height: 100%;
+      padding-right: 10px; 
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--ow-orange);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--ow-blue);
+    }
+
+  </style>
+</head>
+<body>
+  <div class="app-frame">
+    <header class="topbar">
+      <div class="brand-block" style="display: flex; align-items: center; gap: 15px;">
+        <img src="/img/logo.svg" alt="GeoRutas" class="brand-logo" width="50" onerror="this.style.display='none'">
+        <div>
+          <p style="margin:0; font-size: 0.8rem; opacity: 0.7; font-weight: 700;">OPERACIÓN: ZACATECAS-UAZ</p>
+          <h1>GEORUTAS // <span style="color: var(--ow-orange)">GRAPH-GPS</span></h1>
+        </div>
+      </div>
+      <div class="topbar-actions" style="display: flex; align-items: center; gap: 15px;">
+        <button id="btnFitMap" style="background: none; border: 1px solid var(--ow-blue); color: var(--ow-blue); cursor: pointer; padding: 5px; font-family: var(--ow-font-main);">CENTRAR MAPA</button>
+        <span class="status-pill online" style="font-weight: bold; color: #0f0;">ONLINE</span>
+      </div>
+    </header>
+
+    <main class="workspace" style="display: grid; grid-template-columns: 350px 1fr 350px; height: calc(100vh - 70px);">
+      
+      <!-- Panel Izquierdo: Operaciones -->
+      <aside class="panel control-panel" id="controlPanel" style="overflow: hidden; display: flex; flex-direction: column;">
+        
+        <div class="scrollable-panel" style="padding: 20px;">
+          
+          <h2 style="font-family: var(--ow-font-main); font-size: 2rem; margin-top: 0;">CONFIGURACIÓN</h2>
+          
+          <section class="metric-grid" style="display: flex; gap: 15px; margin-bottom: 20px;">
+            <article class="metric-card">
+              <strong id="metricNodes">0</strong><small style="display: block;">NODOS</small>
+            </article>
+            <article class="metric-card">
+              <strong id="metricEdges">0</strong><small style="display: block;">ARISTAS</small>
+            </article>
+          </section>
+
+          <div class="form-card" style="margin-bottom: 20px;">
+            <h3 style="font-family: var(--ow-font-main); color: var(--ow-white); margin-top: 0; font-size: 1.2rem;">DATOS TÁCTICOS (JSON)</h3>
+            <input type="file" id="graphFile" accept="application/json,.json" style="background: #1a202a; color: var(--ow-orange); padding: 5px; width: 100%; box-sizing: border-box; border: 1px solid rgba(240, 100, 20, 0.5); cursor: pointer;">
+          </div>
+
+          <div class="form-card" style="margin-bottom: 25px;">
+            <h3 style="font-family: var(--ow-font-main); color: var(--ow-blue); font-size: 1.2rem;">COORDENADAS</h3>
+            <div class="node-selectors" style="display: flex; flex-direction: column; gap: 10px;">
+              <select id="originSelect" style="background: #1a202a; color: white; border: 1px solid #333; padding: 10px;"></select>
+              <select id="destinationSelect" style="background: #1a202a; color: white; border: 1px solid #333; padding: 10px;"></select>
+            </div>
+          </div>
+
+          <div class="form-card" style="margin-bottom: 25px; border: 1px solid rgba(0, 255, 0, 0.3); background: rgba(0, 255, 0, 0.05); padding: 10px;">
+            <h3 style="font-family: var(--ow-font-main); color: #0f0; font-size: 1.2rem; margin-top: 0;">EXPANSIÓN DE RED</h3>
+            
+            <div style="margin-bottom: 15px;">
+              <strong style="color: #ccc; font-size: 0.8rem;">1. REGISTRAR NUEVO NODO</strong>
+              <div style="display: flex; gap: 5px; margin-top: 5px;">
+                <input type="text" id="newNodeId" placeholder="ID (Ej. Z)" style="width: 25%; background: #1a202a; color: white; border: 1px solid #333; padding: 5px;">
+                <input type="text" id="newNodeLat" placeholder="Latitud" style="width: 37.5%; background: #1a202a; color: white; border: 1px solid #333; padding: 5px;">
+                <input type="text" id="newNodeLng" placeholder="Longitud" style="width: 37.5%; background: #1a202a; color: white; border: 1px solid #333; padding: 5px;">
+              </div>
+              <button id="btnAddNode" style="width: 100%; background: rgba(0,255,0,0.2); color: #0f0; border: 1px solid #0f0; padding: 5px; margin-top: 5px; cursor: pointer; font-family: var(--ow-font-main); font-size: 1.1rem;">AÑADIR NODO</button>
+            </div>
+
+            <div>
+              <strong style="color: #ccc; font-size: 0.8rem;">2. CONECTAR (X ➔ Y)</strong>
+              <div style="display: flex; gap: 5px; margin-top: 5px;">
+                <input type="text" id="linkSource" placeholder="Origen" style="width: 33%; background: #1a202a; color: white; border: 1px solid #333; padding: 5px;">
+                <input type="text" id="linkTarget" placeholder="Destino" style="width: 33%; background: #1a202a; color: white; border: 1px solid #333; padding: 5px;">
+                <input type="number" id="linkWeight" placeholder="Peso" style="width: 33%; background: #1a202a; color: white; border: 1px solid #333; padding: 5px;">
+              </div>
+              <button id="btnLinkNodes" style="width: 100%; background: rgba(0,255,0,0.2); color: #0f0; border: 1px solid #0f0; padding: 5px; margin-top: 5px; cursor: pointer; font-family: var(--ow-font-main); font-size: 1.1rem;">ESTABLECER ENLACE</button>
+            </div>
+          </div>
+
+          <div class="form-card" style="margin-bottom: 20px;">
+            <h3 style="font-family: var(--ow-font-main); color: var(--ow-orange); font-size: 1.2rem; margin-top: 0;">PROTOCOLO LOGÍSTICO</h3>
+            
+            <select id="weightSelect" style="background: #1a202a; color: white; border: 1px solid #333; padding: 10px; width: 100%; margin-bottom: 10px; font-family: 'Inter', sans-serif;">
+              <option value="distance">Distancia estimada</option>
+              <option value="time">Tiempo estimado</option>
+              <option value="cost">Costo ponderado</option>
+            </select>
+
+            <div class="chip-group" style="display: flex; gap: 5px; margin-bottom: 15px;">
+              <button class="chip active" data-algorithm="dijkstra">DIJKSTRA</button>
+              <button class="chip" data-algorithm="prim">PRIM</button>
+              <button class="chip" data-algorithm="kruskal">KRUSKAL</button>
+            </div>
+            <button class="primary-button" id="btnRunAlgorithm">INICIAR CÁLCULO</button>
+          </div>
+
+        </div> </aside>
+
+      <!-- Centro: Mapa HUD -->
+      <section class="map-column" style="position: relative;">
+        <div id="map" style="height: 100%; width: 100%;"></div>
+        <div class="map-toolbar" style="position: absolute; top: 20px; left: 20px; z-index: 1000; background: rgba(0,0,0,0.7); padding: 15px; border-left: 5px solid var(--ow-blue);">
+          <p id="currentInstruction" style="margin:0; font-weight: bold; text-transform: uppercase; font-size: 0.9rem;">Esperando instrucciones...</p>
+        </div>
+      </section>
+
+      <!-- Panel Derecho: Resultados -->
+      <aside class="panel results-panel" id="resultsPanel" style="padding: 20px;">
+        <h2 style="font-family: var(--ow-font-main); font-size: 2rem; margin-top: 0;">ANÁLISIS DE DATOS</h2>
+        <div class="result-summary-card" style="background: rgba(0,174,255,0.05); padding: 15px; border: 1px solid rgba(0,174,255,0.2);">
+          <h3 id="resultTitle" style="margin: 0 0 10px 0; color: var(--ow-blue);">LISTO PARA TRAZAR</h3>
+          <div class="result-stats">
+            <div style="margin-bottom: 5px;">COSTO TOTAL: <strong id="statCost" style="color: var(--ow-orange);">—</strong></div>
+            <div style="margin-bottom: 5px;">NODOS VISITADOS: <strong id="statVisited">—</strong></div>
+            <div style="margin-bottom: 5px;">TIEMPO DE EJECUCIÓN: <strong id="statTime">—</strong></div>
+          </div>
+        </div>
+
+        <div class="timeline-card" style="margin-top: 30px;">
+          <h3 style="font-family: var(--ow-font-main); color: var(--ow-white);">HISTORIAL</h3>
+          <div id="historyList" style="max-height: 250px; overflow-y: auto; font-size: 0.9rem; color: #ccc;"></div>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <div style="display: none;">
+    <button id="btnOpenControl"></button>
+    <button id="btnCloseControl"></button>
+    <button id="btnClearSelection"></button>
+    <input type="checkbox" id="toggleWeights">
+    <input type="checkbox" id="toggleGraph">
+    <span id="algorithmStatus"></span>
+    <div id="floatingResult"></div>
+    <button id="btnDownloadResult"></button>
+    <p id="resultMessage"></p>
+    <p id="algorithmExplanation"></p>
+    <button id="btnRefreshHistory"></button>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>
